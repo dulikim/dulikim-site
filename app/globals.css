@@ -1,26 +1,143 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  iOS / iMessage design tokens.
+  In Tailwind v4, anything we define in @theme becomes a utility class.
+  e.g. `--color-imessage-blue` here lets us write `bg-imessage-blue` in JSX.
+*/
+@theme {
+  /* iMessage bubble colors */
+  --color-imessage-blue: #0b93f6; /* outgoing (the visitor's) bubbles */
+  --color-imessage-gray: #e9e9eb; /* incoming (the bot's) bubbles */
+
+  /* iOS-style page + card surfaces */
+  --color-ios-bg: #ffffff; /* page background */
+  --color-ios-card: #f2f2f7; /* the soft gray widget cards */
+  --color-ios-text: #1c1c1e; /* near-black primary text */
+  --color-ios-subtle: #8e8e93; /* iOS secondary/gray label text */
+  --color-ios-hairline: #d1d1d6; /* thin divider lines */
+
+  /* Rounded corners — iOS leans on generous radii */
+  --radius-ios: 1.25rem; /* cards */
+  --radius-bubble: 1.125rem; /* chat bubbles */
+
+  /* Soft, low-contrast shadow (Apple-style) */
+  --shadow-ios: 0 1px 3px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.05);
+
+  /* System-font-adjacent stack (falls back to the device's native UI font) */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ios-bg);
+  color: var(--color-ios-text);
+  font-family: var(--font-sans);
+}
+
+/* Three-dot "typing…" animation for the chat widget */
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+/* Gentle fade used when the message status swaps from "Delivered" to "Read". */
+@keyframes status-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.status-fade {
+  animation: status-fade-in 0.4s ease-out;
+}
+
+/*
+  Chat thread scrollbar. Hidden by default (and during the auto-scroll that
+  happens when you send a message), and revealed only while the visitor is
+  scrolling manually — e.g. scrolling back up to re-read. On macOS overlay
+  scrollbars this toggles with no layout shift.
+*/
+.chat-scroll {
+  scrollbar-width: none; /* Firefox */
+}
+.chat-scroll::-webkit-scrollbar {
+  display: none; /* Safari / Chrome */
+}
+.chat-scroll.show-bar {
+  scrollbar-width: thin;
+}
+.chat-scroll.show-bar::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+.chat-scroll.show-bar::-webkit-scrollbar-thumb {
+  background-color: rgba(60, 60, 67, 0.35);
+  border-radius: 3px;
+}
+
+/*
+  iMessage "tail" on the last bubble of each group. Two pseudo-elements:
+  ::before draws the curved nub in the bubble color; ::after masks its outer
+  edge with the chat background (the card color) to carve the curve. Adapted
+  from the well-known CSS-Tricks iMessage technique. The ::after color MUST
+  match whatever is directly behind the bubble (here: the card surface).
+*/
+.imsg-tail-out,
+.imsg-tail-in {
+  position: relative;
+}
+.imsg-tail-out::before,
+.imsg-tail-out::after,
+.imsg-tail-in::before,
+.imsg-tail-in::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  height: 16px;
+}
+.imsg-tail-out::before {
+  right: -6px;
+  border-bottom-left-radius: 13px 11px;
+  border-right: 16px solid var(--color-imessage-blue);
+  transform: translate(0, -2px);
+}
+.imsg-tail-out::after {
+  right: -40px;
+  width: 10px;
+  background: var(--color-ios-card);
+  border-bottom-left-radius: 8px;
+  transform: translate(-30px, -2px);
+}
+.imsg-tail-in::before {
+  left: -6px;
+  border-bottom-right-radius: 13px 11px;
+  border-left: 16px solid var(--color-imessage-gray);
+  transform: translate(0, -2px);
+}
+.imsg-tail-in::after {
+  left: 20px;
+  width: 10px;
+  background: var(--color-ios-card);
+  border-bottom-right-radius: 8px;
+  transform: translate(-30px, -2px);
 }
