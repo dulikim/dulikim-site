@@ -8,14 +8,47 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
-// Canned replies for now — purely fake, written in Duli's first-person voice.
-// In a later session, sending a message will instead call our /api/chat route,
-// which talks to Claude. See the TODO marked below for the exact swap point.
-const FAKE_REPLIES = [
-  "good to hear from you! (quick note: this reply is a placeholder for now — the real chat goes live in a later build.)",
-  "love it. once i'm wired up to Claude i'll actually answer this properly.",
-  "noted! right now i'm just echoing canned lines so we can get the look right first.",
-];
+// Convert our UI message list ({ from: "bot"|"user", text }) into the shape the
+// /api/chat route + Anthropic API expect ({ role: "assistant"|"user", content }).
+// The API requires the first message to be from the user, so we drop any leading
+// assistant (bot) messages — e.g. the seeded intro before "sounds good".
+function toApiMessages(uiMessages) {
+  const mapped = uiMessages.map((m) => ({
+    role: m.from === "user" ? "user" : "assistant",
+    content: m.text,
+  }));
+  let start = 0;
+  while (start < mapped.length && mapped[start].role !== "user") start++;
+  const trimmed = mapped.slice(start);
+  // The Anthropic API expects roles to alternate. Our seeded intro now has two
+  // bot messages in a row, so merge any consecutive same-role turns into one.
+  const merged = [];
+  for (const msg of trimmed) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === msg.role) last.content += "\n" + msg.content;
+    else merged.push({ ...msg });
+  }
+  return merged;
+}
+
+// Call our server route and return { reply } or { error }. Never throws — any
+// failure (network, 429, 500) comes back as a friendly { error } string.
+async function fetchReply(apiMessages) {
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: apiMessages }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { error: data.error || "hmm, something went wrong; try again in a sec." };
+    }
+    return { reply: data.reply || "" };
+  } catch {
+    return { error: "couldn't reach the chat right now; check your connection and try again." };
+  }
+}
 
 // Format a Date as a short local time like "9:34 AM" — uses the visitor's own
 // timezone and locale automatically.
@@ -40,6 +73,19 @@ function typingDelay(text) {
 // Beat between a message turning "Read" and Duli starting to respond — keeps it
 // from looking like the reply fires the instant the message is read.
 const READ_TO_REPLY_GAP = 400;
+
+// The long "here's what you can ask me" message Duli types out on first
+// interaction. Its length feeds typingDelay() so it takes a believable beat to
+// "type" before it lands.
+const HOBBIES_TEXT =
+  "anything!! you can ask me anything about me whether its my background, any professional experiences, my favorite product, skills, hobbies, or my music taste (preferably not lol) 😁😁";
+
+// The closing prompt Duli sends asking for the visitor's name. We pick one of
+// these at random on each page load so it doesn't feel canned.
+const NAME_QUESTIONS = [
+  "to whom do i owe the pleasure of speaking with today?",
+  "what's your name?",
+];
 
 // Duli's profile photo, cropped to a circle. We size a round, clipped box and
 // let the image `fill` it with `object-cover` (center-crops the landscape photo
@@ -74,7 +120,7 @@ function Bubble({ from, isLastInGroup, status, time, children }) {
         {/* Only the LAST bubble of a run gets the tail; earlier ones in the run
             stay as plain rounded pills — like iMessage. */}
         <div
-          className={`max-w-[75%] px-[15px] py-[10px] text-[20px] leading-snug bg-imessage-blue text-white rounded-bubble ${
+          className={`max-w-[75%] px-[16px] py-[8px] text-[20px] leading-snug bg-imessage-blue text-white rounded-bubble ${
             isLastInGroup ? "imsg-tail-out" : ""
           }`}
         >
@@ -105,7 +151,7 @@ function Bubble({ from, isLastInGroup, status, time, children }) {
     <div className="flex justify-start items-end gap-2">
       {isLastInGroup ? <Avatar /> : <span className="w-[45px] shrink-0" />}
       <div
-        className={`max-w-[75%] px-[15px] py-[10px] text-[20px] leading-snug bg-imessage-gray text-ios-text rounded-bubble ${
+        className={`max-w-[75%] px-[16px] py-[8px] text-[20px] leading-snug bg-imessage-gray text-ios-text rounded-bubble ${
           isLastInGroup ? "imsg-tail-in" : ""
         }`}
       >
@@ -137,17 +183,17 @@ function TypingIndicator() {
 export default function ChatWidget() {
   // Seeded conversation the visitor lands on. It reads as if a text thread with
   // Duli is already underway (first person — they're talking to Duli directly).
-  // "what's your name?" is intentionally NOT seeded: it stays hidden until the
-  // visitor first interacts, then gets "typed out" (see revealConversation).
-  // Seeded messages carry no status — Delivered/Read only appears on the
-  // visitor's own messages.
+  // The "what can i ask you about" rundown and the "what should i call you?"
+  // prompt are intentionally NOT seeded: they stay hidden until the visitor
+  // first interacts, then get "typed out" (see revealConversation). Seeded
+  // messages carry no status — Delivered/Read only appears on the visitor's own.
   const [messages, setMessages] = useState([
     {
       id: 0,
       from: "bot",
-      text: "hey, i'm duli 👋 want to work together? or just want to chat? send me a message right here — for real, i read these.",
+      text: "hey, i'm Duli 👋 want to work together? or just want to chat? either way just text me here - its real and i actually read these!!",
     },
-    { id: 1, from: "user", text: "sounds good 🙏" },
+    { id: 1, from: "user", text: "sounds fire 🔥 what can i ask you about?" },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -230,16 +276,34 @@ export default function ChatWidget() {
     revealedRef.current = true;
     setHasInteracted(true);
 
-    const question = "what's your name?";
+    // Two messages typed out back-to-back: first the long rundown, then a
+    // (randomly chosen) name prompt. They're consecutive bot messages, so the
+    // grouping logic gives the first NO tail and the closing one the tail
+    // (iMessage behavior).
+    const question =
+      NAME_QUESTIONS[Math.floor(Math.random() * NAME_QUESTIONS.length)];
+
+    const showIntroAt = 500 + typingDelay(HOBBIES_TEXT);
+    const startQuestionAt = showIntroAt + 700;
+    const showQuestionAt = startQuestionAt + typingDelay(question);
+
     timersRef.current.push(
       setTimeout(() => setIsTyping(true), 500),
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          { id: nextId(), from: "bot", text: HOBBIES_TEXT },
+        ]);
+        setIsTyping(false);
+      }, showIntroAt),
+      setTimeout(() => setIsTyping(true), startQuestionAt),
       setTimeout(() => {
         setMessages((prev) => [
           ...prev,
           { id: nextId(), from: "bot", text: question },
         ]);
         setIsTyping(false);
-      }, 500 + typingDelay(question))
+      }, showQuestionAt)
     );
   }
 
@@ -250,18 +314,23 @@ export default function ChatWidget() {
 
     const id = nextId();
     const sentAt = new Date();
-    // New message starts as "Delivered" (no typing dots yet — that comes after
-    // it's been "Read", which feels more natural).
+
+    // Snapshot what we'll send to the API: the current thread + this new message,
+    // converted to the API's role/content shape. (Captured now, before setState.)
+    const apiMessages = toApiMessages([...messages, { from: "user", text }]);
+
+    // Add the user's bubble (starts as "Delivered"); clear the input.
     setMessages((prev) => [
       ...prev,
       { id, from: "user", text, status: "delivered", time: sentAt },
     ]);
     setInput("");
 
-    const reply = FAKE_REPLIES[Math.floor(Math.random() * FAKE_REPLIES.length)];
+    // Kick off the REAL request immediately — it runs while the Delivered→Read
+    // animation plays, so the reply is usually ready by the time dots appear.
+    const replyPromise = fetchReply(apiMessages);
+
     const readAt = readDelay(text);
-    const typingStartAt = readAt + READ_TO_REPLY_GAP;
-    const replyAt = typingStartAt + typingDelay(reply);
 
     timersRef.current.push(
       // Delivered -> Read
@@ -270,20 +339,31 @@ export default function ChatWidget() {
           prev.map((m) => (m.id === id ? { ...m, status: "read" } : m))
         );
       }, readAt),
-      // A beat after Read, Duli starts typing…
-      setTimeout(() => setIsTyping(true), typingStartAt),
-      // ────────────────────────────────────────────────────────────────────
-      // TODO (Session 4): replace this fake reply with a real call:
-      //   const res = await fetch("/api/chat", { method: "POST", body: ... });
-      // and drive `setIsTyping` off the real request's start/finish.
-      // ────────────────────────────────────────────────────────────────────
+      // A beat after "Read", Duli "starts typing". Once the real reply is back,
+      // we keep the dots up for typingDelay(reply) — the SAME length-scaled
+      // formula the seeded messages use — so a long answer visibly takes longer
+      // to "type" than a short one. Any time the API already burned counts
+      // toward that, so we only wait the remainder.
       setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          { id: nextId(), from: "bot", text: reply },
-        ]);
-        setIsTyping(false);
-      }, replyAt)
+        setIsTyping(true);
+        const startedAt = Date.now();
+        replyPromise.then((result) => {
+          const botText =
+            result.error ||
+            result.reply ||
+            "let's keep it about my work; ask me anything about my background or projects.";
+          const wait = Math.max(0, typingDelay(botText) - (Date.now() - startedAt));
+          timersRef.current.push(
+            setTimeout(() => {
+              setMessages((prev) => [
+                ...prev,
+                { id: nextId(), from: "bot", text: botText },
+              ]);
+              setIsTyping(false);
+            }, wait)
+          );
+        });
+      }, readAt + READ_TO_REPLY_GAP)
     );
   }
 
