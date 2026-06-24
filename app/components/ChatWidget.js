@@ -24,17 +24,17 @@ function formatTime(date) {
 }
 
 // How long a SENT message sits on "Delivered" before flipping to "Read".
-// 800ms glance/"Delivered" beat + 40ms/char (~25 chars/sec ≈ a fluent reading
-// pace). e.g. "check this out" (14) ≈ 1.4s; a long paragraph (~118) ≈ 5.5s.
+// 800ms glance/"Delivered" beat + 40ms/char, capped at 4000ms. So the formula
+// scales until the text hits 80 chars, then it holds at 4s.
 function readDelay(text) {
-  return Math.min(8000, 800 + text.length * 40);
+  return Math.min(4000, 800 + text.length * 40);
 }
 
 // How long Duli appears to be "typing" before the reply lands.
-// 1500ms "thinking" beat + 20ms/char. e.g. a short reply ≈ 1.8s; a long
-// placeholder reply ≈ 3.9s.
+// 1500ms "thinking" beat + 20ms/char, capped at 4000ms. So the formula scales
+// until the reply hits 125 chars, then it holds at 4s.
 function typingDelay(text) {
-  return Math.min(7000, 1500 + text.length * 20);
+  return Math.min(4000, 1500 + text.length * 20);
 }
 
 // Beat between a message turning "Read" and Duli starting to respond — keeps it
@@ -295,7 +295,7 @@ export default function ChatWidget() {
     >
       {/* Header — iMessage conversation style: back chevron, centered avatar +
           name, and a FaceTime video icon on the right. */}
-      <header className="relative flex items-center justify-center px-5 py-4 border-b border-ios-hairline">
+      <header className="relative flex items-center justify-center px-5 pt-4 pb-2 border-b border-ios-hairline">
         {/* Back chevron (decorative for now) */}
         <span className="absolute left-4 text-imessage-blue" aria-hidden="true">
           <svg width="14" height="24" viewBox="0 0 14 24" fill="none">
@@ -322,7 +322,7 @@ export default function ChatWidget() {
           title="Schedule a call (Calendly — coming later)"
           className="absolute right-4 text-imessage-blue"
         >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none">
             <rect
               x="2.5"
               y="6.5"
