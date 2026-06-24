@@ -51,13 +51,13 @@ export default function NavBar() {
   }, [activeIndex]);
 
   return (
-    <nav className="flex justify-center pt-8 pb-4">
-      <div className="relative flex items-center gap-1 rounded-full bg-ios-card p-1.5 shadow-ios">
+    <nav className="sticky top-0 z-50 flex justify-center pt-8 pb-4 bg-ios-bg">
+      <div className="relative flex items-center gap-1 rounded-full bg-white p-1.5 shadow-ios">
         {/* The sliding highlight: a single element that translates/resizes via a
             CSS transition, rather than re-styling each tab. */}
         <span
           aria-hidden="true"
-          className={`absolute top-1.5 bottom-1.5 rounded-full bg-white shadow-sm ${
+          className={`absolute top-1.5 bottom-1.5 rounded-full bg-ios-card shadow-sm ${
             animate ? "transition-all duration-300 ease-out" : ""
           }`}
           style={{ left: indicator.left, width: indicator.width }}

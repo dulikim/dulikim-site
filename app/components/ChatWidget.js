@@ -24,10 +24,10 @@ function formatTime(date) {
 }
 
 // How long a SENT message sits on "Delivered" before flipping to "Read".
-// 800ms glance/"Delivered" beat + 40ms/char, capped at 4000ms. So the formula
-// scales until the text hits 80 chars, then it holds at 4s.
+// 150ms beat + 10ms/char, capped at 500ms. So it scales until the text hits
+// ~35 chars, then it holds at 0.5s (the latest "Read" ever appears).
 function readDelay(text) {
-  return Math.min(4000, 800 + text.length * 40);
+  return Math.min(500, 150 + text.length * 10);
 }
 
 // How long Duli appears to be "typing" before the reply lands.
@@ -46,7 +46,9 @@ const READ_TO_REPLY_GAP = 400;
 // into the circle). `scale-110` zooms in slightly; high quality + a generous
 // fetch size keep it crisp on retina screens. next/image auto-rotates per EXIF.
 function Avatar({ size = "sm" }) {
-  const dim = size === "lg" ? "w-16 h-16" : "w-8 h-8";
+  // sm avatars (in the conversation) are nudged down ~8px so they sit a touch
+  // lower against the bubble; the lg header avatar is unaffected.
+  const dim = size === "lg" ? "w-16 h-16" : "w-[45px] h-[45px] translate-y-2";
   return (
     <span
       className={`relative ${dim} shrink-0 rounded-full overflow-hidden select-none`}
@@ -57,7 +59,7 @@ function Avatar({ size = "sm" }) {
         fill
         sizes="128px"
         quality={95}
-        className="object-cover scale-110"
+        className="object-cover scale-125"
       />
     </span>
   );
@@ -72,7 +74,7 @@ function Bubble({ from, isLastInGroup, status, time, children }) {
         {/* Only the LAST bubble of a run gets the tail; earlier ones in the run
             stay as plain rounded pills — like iMessage. */}
         <div
-          className={`max-w-[75%] px-4 py-2.5 text-[17px] leading-snug bg-imessage-blue text-white rounded-bubble ${
+          className={`max-w-[75%] px-[15px] py-[10px] text-[20px] leading-snug bg-imessage-blue text-white rounded-bubble ${
             isLastInGroup ? "imsg-tail-out" : ""
           }`}
         >
@@ -101,9 +103,9 @@ function Bubble({ from, isLastInGroup, status, time, children }) {
   // Incoming (from Duli): avatar + tail show only on the last bubble of the run.
   return (
     <div className="flex justify-start items-end gap-2">
-      {isLastInGroup ? <Avatar /> : <span className="w-8 shrink-0" />}
+      {isLastInGroup ? <Avatar /> : <span className="w-[45px] shrink-0" />}
       <div
-        className={`max-w-[75%] px-4 py-2.5 text-[17px] leading-snug bg-imessage-gray text-ios-text rounded-bubble ${
+        className={`max-w-[75%] px-[15px] py-[10px] text-[20px] leading-snug bg-imessage-gray text-ios-text rounded-bubble ${
           isLastInGroup ? "imsg-tail-in" : ""
         }`}
       >
@@ -291,11 +293,11 @@ export default function ChatWidget() {
   return (
     <section
       onClick={revealConversation}
-      className="bg-ios-card rounded-ios shadow-ios overflow-hidden"
+      className="bg-ios-bg rounded-ios overflow-hidden"
     >
       {/* Header — iMessage conversation style: back chevron, centered avatar +
           name, and a FaceTime video icon on the right. */}
-      <header className="relative flex items-center justify-center px-5 pt-4 pb-2 border-b border-ios-hairline">
+      <header className="relative flex items-center justify-center px-5 pt-4 pb-2">
         {/* Back chevron (decorative for now) */}
         <span className="absolute left-4 text-imessage-blue" aria-hidden="true">
           <svg width="14" height="24" viewBox="0 0 14 24" fill="none">
@@ -320,22 +322,25 @@ export default function ChatWidget() {
           type="button"
           aria-label="Schedule a call"
           title="Schedule a call (Calendly — coming later)"
-          className="absolute right-4 text-imessage-blue"
+          className="absolute right-5 text-imessage-blue"
         >
-          <svg width="38" height="38" viewBox="0 0 24 24" fill="none">
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
+            {/* camera body — centered rounded rectangle */}
             <rect
-              x="2.5"
-              y="6.5"
-              width="12"
-              height="11"
-              rx="2.5"
+              x="3.5"
+              y="7"
+              width="11"
+              height="10"
+              rx="3"
               stroke="currentColor"
-              strokeWidth="1.8"
+              strokeWidth="2"
             />
+            {/* lens — shorter flare so the camera isn't so wide/stretched */}
             <path
-              d="M14.5 10l5-3v10l-5-3"
+              d="M14.5 10.5L19.5 8.5V15.5L14.5 13.5"
               stroke="currentColor"
-              strokeWidth="1.8"
+              strokeWidth="2"
+              strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
@@ -347,7 +352,7 @@ export default function ChatWidget() {
           scrolling) reveals it. */}
       <div
         ref={scrollRef}
-        className={`px-4 py-4 space-y-2.5 h-80 overflow-y-auto chat-scroll ${
+        className={`px-4 py-4 space-y-2.5 h-80 overflow-y-auto overflow-x-hidden chat-scroll ${
           scrollbarVisible ? "show-bar" : ""
         }`}
       >
@@ -394,11 +399,12 @@ export default function ChatWidget() {
             aria-label="Type a message"
             className="w-full bg-transparent border border-ios-hairline rounded-full pl-5 pr-12 py-2.5 text-[17px] outline-none focus:border-imessage-blue placeholder:text-ios-subtle"
           />
+          {/* Not `disabled` so it can show a hover state even when empty;
+              handleSend() still no-ops when there's no text / Duli is typing. */}
           <button
             type="submit"
             aria-label="Send message"
-            disabled={!input.trim() || isTyping}
-            className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors ${
+            className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors cursor-pointer hover:bg-imessage-blue ${
               input.trim() && !isTyping ? "bg-imessage-blue" : "bg-ios-subtle"
             }`}
           >

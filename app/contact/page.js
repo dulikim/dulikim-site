@@ -29,15 +29,18 @@ export default function ContactPage() {
         {/* Widget 1 — the AI chatbot (currently a static shell) */}
         <ChatWidget />
 
-        {/* Widgets 2 & 3 — placeholders only for now */}
-        <PlaceholderWidget
-          title="Email Me"
-          note="Widget 2 (mailto) — coming in a later session"
-        />
-        <PlaceholderWidget
-          title="Get My Resume"
-          note="Widget 3 (resume auto-send) — coming in a later session"
-        />
+        {/* Widgets 2 & 3 — side by side below the chat (marco.fyi layout).
+            Stacks to one column on small screens. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <PlaceholderWidget
+            title="Email Me"
+            note="Widget 2 (mailto) — coming in a later session"
+          />
+          <PlaceholderWidget
+            title="Get My Resume"
+            note="Widget 3 (resume auto-send) — coming in a later session"
+          />
+        </div>
       </div>
     </main>
   );
