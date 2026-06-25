@@ -1,4 +1,5 @@
 import ChatWidget from "../components/ChatWidget";
+import EmailWidget from "../components/EmailWidget";
 
 // This page lives at /contact. The root URL "/" redirects here (see app/page.js),
 // so dulikim.com lands visitors on Contact — the project's intended landing page.
@@ -32,10 +33,7 @@ export default function ContactPage() {
         {/* Widgets 2 & 3 — side by side below the chat (marco.fyi layout).
             Stacks to one column on small screens. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <PlaceholderWidget
-            title="Email Me"
-            note="Widget 2 (mailto) — coming in a later session"
-          />
+          <EmailWidget />
           <PlaceholderWidget
             title="Get My Resume"
             note="Widget 3 (resume auto-send) — coming in a later session"
