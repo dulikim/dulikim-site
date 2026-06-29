@@ -1,19 +1,6 @@
 import ChatWidget from "../components/ChatWidget";
 import EmailWidget from "../components/EmailWidget";
-
-// This page lives at /contact. The root URL "/" redirects here (see app/page.js),
-// so dulikim.com lands visitors on Contact — the project's intended landing page.
-
-// Small placeholder card so the three-widget layout is visible now, without
-// building Widget 2/3 functionality yet (those are their own sessions).
-function PlaceholderWidget({ title, note }) {
-  return (
-    <section className="bg-ios-card rounded-ios shadow-ios p-7 flex flex-col items-center justify-center text-center gap-1.5 min-h-[170px] border border-dashed border-ios-hairline">
-      <p className="text-lg font-semibold">{title}</p>
-      <p className="text-base text-ios-subtle">{note}</p>
-    </section>
-  );
-}
+import ResumeWidget from "../components/ResumeWidget";
 
 export default function ContactPage() {
   return (
@@ -34,10 +21,7 @@ export default function ContactPage() {
             Stacks to one column on small screens. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <EmailWidget />
-          <PlaceholderWidget
-            title="Get My Resume"
-            note="Widget 3 (resume auto-send) — coming in a later session"
-          />
+          <ResumeWidget />
         </div>
       </div>
     </main>

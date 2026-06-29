@@ -207,6 +207,7 @@ export default function ChatWidget() {
   // that mismatch would otherwise cause a React hydration warning.
   const [todayTime, setTodayTime] = useState(null);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTodayTime(formatTime(new Date()));
   }, []);
 
