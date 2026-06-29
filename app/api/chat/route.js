@@ -10,6 +10,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { supabase } from "@/lib/supabase";
 
 // We read files (persona.md) and use env vars, so force the Node.js runtime
 // (it's the default, but we're explicit since fs isn't available on the Edge runtime).
@@ -226,6 +227,14 @@ export async function POST(request) {
       return Response.json({
         reply: "let's keep it about my work; ask me anything about my background, projects, or how i think about products.",
       });
+    }
+
+    if (supabase) {
+      const lastUserMsg = [...parsed.messages].reverse().find(m => m.role === "user")?.content ?? "";
+      supabase
+        .from("conversations")
+        .insert({ ip, user_message: lastUserMsg, bot_reply: reply })
+        .then(({ error }) => { if (error) console.error("Supabase log error:", error.message); });
     }
 
     return Response.json({ reply });
