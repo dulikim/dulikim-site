@@ -4,42 +4,43 @@ import { useState } from "react";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Small spinner shown inside the CTA while the request is in-flight.
+// Small spinner shown inside the CTA while the request is in-flight. White so it
+// reads on the filled-blue button.
 function Spinner() {
   return (
     <span
-      className="w-4 h-4 rounded-full border-2 border-[#0b93f6] border-t-transparent animate-spin"
+      className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"
       aria-hidden="true"
     />
   );
 }
 
-// Inline PDF-document icon for the top-right "View Resume" button.
-// Same 18×18 fill="white" treatment as the Notion glyph in EmailWidget.
-function PdfIcon() {
+// A skeuomorphic mini "resume page" built entirely from divs (no image needed).
+// White paper with a soft shadow + faint border so it stands out on BOTH the
+// white card and the dark hover state. A blue dot + short lines reads as a
+// name/avatar header; the gray lines below read as body text. The slight tilt
+// straightens on hover for a little life.
+function ResumePageGraphic() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      {/* Page outline */}
-      <path
-        d="M6 2h9l4 4v16a1 1 0 01-1 1H6a1 1 0 01-1-1V3a1 1 0 011-1z"
-        stroke="white"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Folded corner */}
-      <path
-        d="M14 2v5h5"
-        stroke="white"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Two content lines */}
-      <path d="M9 13h6M9 17h4" stroke="white" strokeWidth="1.75" strokeLinecap="round" />
-    </svg>
+    <div className="w-[72px] h-[92px] rounded-lg bg-white shadow-[0_6px_18px_rgba(0,0,0,0.16)] border border-black/5 p-2.5 flex flex-col gap-1.5 -rotate-2 group-hover:rotate-0 transition-transform duration-300">
+      {/* header: avatar dot + name/title lines */}
+      <div className="flex items-center gap-1 mb-0.5">
+        <span className="w-2.5 h-2.5 rounded-full bg-imessage-blue shrink-0" />
+        <div className="flex flex-col gap-0.5 flex-1">
+          <span className="h-1 w-3/4 rounded-full bg-ios-text/60" />
+          <span className="h-1 w-1/2 rounded-full bg-ios-hairline" />
+        </div>
+      </div>
+      {/* body text lines */}
+      <span className="h-1 w-full rounded-full bg-ios-hairline" />
+      <span className="h-1 w-full rounded-full bg-ios-hairline" />
+      <span className="h-1 w-4/5 rounded-full bg-ios-hairline" />
+      <span className="h-1 w-full rounded-full bg-ios-hairline" />
+      <span className="h-1 w-2/3 rounded-full bg-ios-hairline" />
+    </div>
   );
 }
+
 
 export default function ResumeWidget() {
   const [email, setEmail] = useState("");
@@ -79,110 +80,87 @@ export default function ResumeWidget() {
   }
 
   return (
-    // Mirrors EmailWidget's card exactly: white base, dark on hover/focus-within,
-    // smooth color transition, group utilities propagate state to children.
-    <div className="group rounded-ios shadow-ios p-5 bg-white hover:bg-[#1c1c1e] focus-within:bg-[#1c1c1e] transition-colors duration-300">
+    // Same iOS card base + dark-on-hover behavior as EmailWidget, but a full-height
+    // flex column so the hero region absorbs the extra row height and the form pins
+    // to the bottom (no empty gap under the button).
+    <div className="group rounded-ios shadow-ios p-5 bg-white hover:bg-[#1c1c1e] focus-within:bg-[#1c1c1e] transition-colors duration-300 flex flex-col h-full">
 
-      {/* ── Zone 1: Header row ─────────────────────────────────────────────────
-          Identical structure to EmailWidget: title + subtitle left, icon button right. */}
-      <div className="flex items-start justify-between mb-4">
+      {/* ── Hero region: resume graphic + centered title/subtitle.
+          flex-1 makes it grow to fill, centering its contents and pushing the
+          form down to the card's bottom edge. ── */}
+      <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-2">
+        <ResumePageGraphic />
         <div>
           <p className="font-bold text-[18px] leading-tight text-ios-text group-hover:text-white group-focus-within:text-white transition-colors duration-300">
             Get My Resume
           </p>
           {status === "success" ? (
             <p className="text-sm text-ios-subtle group-hover:text-[#8e8e93] group-focus-within:text-[#8e8e93] mt-0.5 transition-colors duration-300">
-              didn&apos;t get it? check spam, or{" "}
-              <a
-                href="mailto:dulikim@umich.edu"
-                className="underline underline-offset-2"
-              >
-                email me directly
-              </a>
+              Sent! Check your inbox ✓
             </p>
           ) : (
             <p className="text-sm text-ios-subtle group-hover:text-[#8e8e93] group-focus-within:text-[#8e8e93] mt-0.5 transition-colors duration-300">
-              View it, or get it sent to your inbox
+              Sent straight to your inbox
             </p>
           )}
         </div>
-
-        {/* "View Resume" action — styled like EmailWidget's calendar icon button.
-            Opens /resume.pdf in a new tab. Will 404 until the PDF is added to /public. */}
-        <a
-          href="/resume.pdf"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          aria-label="View resume (PDF)"
-          title="View resume (opens in new tab)"
-          className="w-10 h-10 rounded-[9px] bg-black flex items-center justify-center flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-        >
-          <PdfIcon />
-        </a>
       </div>
 
-      {/* ── Zone 2: Email capture (blue accent bar) ────────────────────────────
-          Mirrors EmailWidget's compose area structure. Collapses to confirmation
-          on success. */}
+      {/* ── Bottom region: pill input + filled-blue CTA (or success note) ── */}
       {status === "success" ? (
-        <div className="border-l-[3px] border-[#0b93f6] pl-3 mb-5 py-1.5">
-          <p className="text-sm font-semibold text-ios-text group-hover:text-white group-focus-within:text-white transition-colors duration-300">
-            Sent! Check your inbox ✓
+        <div className="mt-4 flex flex-col gap-2.5">
+          <a
+            href="/resume.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full bg-imessage-blue text-white rounded-full py-2.5 flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer"
+          >
+            <span className="text-sm font-medium">View Resume</span>
+            <span className="text-sm" aria-hidden="true">→</span>
+          </a>
+          <p className="text-[13px] text-center text-ios-subtle group-hover:text-[#8e8e93] group-focus-within:text-[#8e8e93] transition-colors duration-300">
+            didn&apos;t get it? check spam, or{" "}
+            <a href="mailto:dulikim@umich.edu" className="underline underline-offset-2">
+              email me directly
+            </a>
           </p>
         </div>
       ) : (
-        <form onSubmit={handleSend}>
-          <div className="border-l-[3px] border-[#0b93f6] pl-3 mb-5">
-            {/* "To" row — mirrors the static "To: dulikim@umich.edu" row in EmailWidget */}
-            <div className="flex items-center gap-3 py-1.5 border-b border-ios-hairline group-hover:border-[#2c2c2e] group-focus-within:border-[#2c2c2e] transition-colors duration-300">
-              <span className="text-xs text-ios-subtle group-hover:text-[#636366] group-focus-within:text-[#636366] w-5 flex-shrink-0 transition-colors duration-300">
-                To
-              </span>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (status === "error") { setStatus("idle"); setErrorMsg(""); }
-                }}
-                placeholder="you@email.com"
-                aria-label="Your email address"
-                disabled={status === "loading"}
-                className="w-full bg-transparent text-sm text-ios-text group-hover:text-white group-focus-within:text-white placeholder:text-ios-subtle outline-none caret-[#0b93f6] transition-colors duration-300 disabled:opacity-60"
-              />
-            </div>
+        <form onSubmit={handleSend} className="mt-4 flex flex-col gap-2.5">
+          {/* Pill email input — distinct from EmailWidget's underlined "To" row */}
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (status === "error") { setStatus("idle"); setErrorMsg(""); }
+            }}
+            placeholder="you@email.com"
+            aria-label="Your email address"
+            disabled={status === "loading"}
+            className="w-full bg-transparent text-center text-sm text-ios-text group-hover:text-white group-focus-within:text-white placeholder:text-ios-subtle border border-ios-hairline group-hover:border-[#3a3a3c] rounded-full px-4 py-2.5 outline-none caret-[#0b93f6] focus:border-imessage-blue transition-colors duration-300 disabled:opacity-60"
+          />
 
-            {/* Inline error — iOS system red, readable on both light and dark card */}
-            {status === "error" && errorMsg && (
-              <p className="text-[13px] text-[#ff453a] mt-1.5">{errorMsg}</p>
-            )}
-          </div>
+          {/* Inline error — iOS system red, readable on both light and dark card */}
+          {status === "error" && errorMsg && (
+            <p className="text-[13px] text-center text-[#ff453a] -mt-0.5">{errorMsg}</p>
+          )}
 
-          {/* ── Zone 3: CTA — rounded-full, mirrors "Email Me ↗" button ── */}
+          {/* Filled-blue CTA — the primary capture action (vs. EmailWidget's outline pill) */}
           <button
             type="submit"
             disabled={status === "loading"}
-            className="w-full border border-ios-hairline group-hover:border-[#3a3a3c] group-focus-within:border-[#3a3a3c] rounded-full py-2.5 flex items-center justify-center gap-1.5 transition-colors duration-300 cursor-pointer disabled:cursor-default disabled:opacity-70"
+            className="w-full bg-imessage-blue text-white rounded-full py-2.5 flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer disabled:cursor-default disabled:opacity-70"
           >
             {status === "loading" ? (
               <>
                 <Spinner />
-                <span className="text-sm font-medium text-ios-text group-hover:text-white group-focus-within:text-white transition-colors duration-300">
-                  Sending…
-                </span>
+                <span className="text-sm font-medium">Sending…</span>
               </>
             ) : (
               <>
-                <span className="text-sm font-medium text-ios-text group-hover:text-white group-focus-within:text-white transition-colors duration-300">
-                  Send My Resume
-                </span>
-                <span
-                  className="text-sm text-ios-text group-hover:text-white group-focus-within:text-white transition-colors duration-300"
-                  aria-hidden="true"
-                >
-                  →
-                </span>
+                <span className="text-sm font-medium">Send My Resume</span>
+                <span className="text-sm" aria-hidden="true">→</span>
               </>
             )}
           </button>

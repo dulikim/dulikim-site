@@ -8,6 +8,7 @@
 import { Resend } from "resend";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { supabase } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 
@@ -72,6 +73,14 @@ export async function POST(request) {
   const resumePath = join(process.cwd(), "public", "resume.pdf");
   const hasPdf = existsSync(resumePath);
   const pdfBuffer = hasPdf ? readFileSync(resumePath) : null;
+
+  // Store the lead in Supabase before sending — best-effort, never blocks the email.
+  if (supabase) {
+    const { error: dbError } = await supabase
+      .from("emails")
+      .insert({ email: email.trim() });
+    if (dbError) console.error("Supabase insert error:", dbError.message);
+  }
 
   const fromAddress = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
   const resend = new Resend(process.env.RESEND_API_KEY);
