@@ -6,14 +6,6 @@ export default function ContactPage() {
   return (
     <main className="px-4 pb-16">
       <div className="mx-auto w-full max-w-2xl flex flex-col gap-7">
-        {/* Centered heading (iOS-style: centered layout throughout) */}
-        <header className="text-center mb-2">
-          <h1 className="text-4xl font-bold tracking-tight">Get in touch</h1>
-          <p className="text-lg text-ios-subtle mt-2">
-            Chat with my assistant, email me, or grab my resume.
-          </p>
-        </header>
-
         {/* Widget 1 — the AI chatbot (currently a static shell) */}
         <ChatWidget />
 
