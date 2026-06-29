@@ -1,5 +1,6 @@
 import "./globals.css";
 import NavBar from "./components/NavBar";
+import { Analytics } from "@vercel/analytics/next";
 
 // `metadata` is how Next.js sets the browser-tab title and the page description
 // (used by search engines / link previews). It lives in the root layout so it
@@ -17,6 +18,7 @@ export default function RootLayout({ children }) {
       <body className="min-h-full">
         <NavBar />
         {children}
+        <Analytics />
       </body>
     </html>
   );
